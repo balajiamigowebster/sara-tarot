@@ -90,6 +90,7 @@ const Category = require('./models/Category');
 const Order = require('./models/Order');
 const LoginHistory = require('./models/LoginHistory');
 const SiteVisit = require('./models/SiteVisit');
+const ClassPurchaseOrder = require('./models/ClassPurchaseOrder');
 
 // Set up relationships
 LoginHistory.belongsTo(User, { foreignKey: 'userId' });

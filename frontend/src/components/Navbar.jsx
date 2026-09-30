@@ -92,7 +92,7 @@ export default function Navbar({ cartItems = [], setCartItems, isCartOpen, setIs
       if (lowerName === 'crystal mala') return 'படிக மாலை';
       if (lowerName === 'crystal tower') return 'படிக கோபுரம்';
     }
-
+  
     return name;
   };
 

@@ -30,6 +30,13 @@ export default function Checkout({ cartItems = [], setCartItems }) {
     return false;
   });
 
+  const isClassPurchase = cartItems.some(item => {
+    const nameStr = (item.name || '').toLowerCase();
+    return nameStr.includes('class') || nameStr.includes('workshop') || nameStr.includes('testing');
+  });
+
+  const isPhoneRequired = isPhoneAddressRequired || isClassPurchase;
+
   const [lastOrderDetails, setLastOrderDetails] = useState({ items: [], total: 0 });
 
   const itemsTotalAmount = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -53,7 +60,7 @@ export default function Checkout({ cartItems = [], setCartItems }) {
   const handlePay = async (e) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
-    if (isPhoneAddressRequired && (!phone.trim() || !address.trim())) {
+    if ((isPhoneRequired && !phone.trim()) || (isPhoneAddressRequired && !address.trim())) {
       setError(t('checkout.fillDetails'));
       return;
     }
@@ -284,11 +291,11 @@ Please confirm my booking and process it. Thank you!`;
               <div className="flex flex-col gap-5">
                 <div>
                   <label className="block text-[12px] font-semibold uppercase tracking-[0.5px] text-sara-muted mb-2">
-                    {t('checkout.phoneNumber')} {isPhoneAddressRequired && <span className="text-red-500">*</span>}
+                    {t('checkout.phoneNumber')} {isPhoneRequired && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="tel"
-                    required={isPhoneAddressRequired}
+                    required={isPhoneRequired}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder={t('checkout.phonePlaceholder')}
