@@ -124,7 +124,9 @@ export default function ProductDetail({ cart = [], setCart, setIsCartOpen }) {
           name: cartName,
           price: finalPrice,
           image: getImgSrc(),
-          quantity
+          quantity,
+          category: product.category || '',
+          isCrystal: product.category ? ["rasi", "bracelet", "pyrite", "rings", "pendants", "tumbles", "crystal balls", "pyrite frames", "crystal mala", "crystal tower", "crystal"].includes(product.category.toLowerCase()) : false
         }
       ]);
     }

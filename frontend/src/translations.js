@@ -28,7 +28,9 @@ export const translations = {
       menus: "Menus",
       manageMenus: "Manage Menus",
       crystals: "Crystals",
-      spiritualServices: "Spiritual Services"
+      spiritualServices: "Spiritual Services",
+      myOrders: "MY ORDERS",
+      myClass: "MY CLASS"
     },
     hero: {
       subtitle: "CELESTIAL GUIDANCE & SPIRITUAL HEALING",
@@ -650,7 +652,9 @@ export const translations = {
       menus: "மெனுக்கள்",
       manageMenus: "மெனுக்களை நிர்வகி",
       crystals: "படிகங்கள்",
-      spiritualServices: "ஆன்மீக சேவைகள்"
+      spiritualServices: "ஆன்மீக சேவைகள்",
+      myOrders: "என் ஆர்டர்கள்",
+      myClass: "என் வகுப்பு"
     },
     homeVideo: {
       subtitle: "தெய்வீக வழிகாட்டுதல்",

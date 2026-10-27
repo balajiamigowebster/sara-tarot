@@ -123,7 +123,9 @@ export default function Crystals({ cart = [], setCart, setIsCartOpen }) {
           name: `${item.name}${selectedSize ? ` (${selectedSize})` : ''}${nameSuffix}`,
           price: finalPrice,
           image: item.image || '/saraa-logo.jpeg',
-          quantity: 1
+          quantity: 1,
+          category: item.category || 'crystal',
+          isCrystal: true
         }
       ]);
     }

@@ -5,7 +5,6 @@ import { useLanguage } from '../context/LanguageContext';
 import api from '../api/client';
 
 const WHATSAPP_PHONE = '919655199507';
-const MERCHANT_UPI_ID = '50100234981123@hdfcbank';
 const MERCHANT_NAME = 'SARAA TAROT SERVICES';
 
 export default function Checkout({ cartItems = [], setCartItems }) {
@@ -18,24 +17,53 @@ export default function Checkout({ cartItems = [], setCartItems }) {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
 
-  const CRYSTAL_CATEGORIES = ["rasi", "bracelet", "pyrite", "rings", "pendants", "tumbles", "crystal balls", "pyrite frames", "crystal mala", "crystal tower", "crystal"];
-  const isPhoneAddressRequired = cartItems.some(item => {
-    const nameStr = (item.name || '').toLowerCase();
-    const catStr = (item.category || '').toLowerCase();
-    
-    if (nameStr.includes('murugar')) return true;
-    if (nameStr.includes('crystal')) return true;
-    if (CRYSTAL_CATEGORIES.includes(catStr)) return true;
-    
-    return false;
-  });
+  const CRYSTAL_KEYWORDS = [
+    "rasi", "bracelet", "bracelets", "pyrite", "rings", "ring", 
+    "pendants", "pendant", "tumbles", "tumble", "crystal balls", "crystal ball", 
+    "pyrite frames", "pyrite frame", "crystal mala", "crystal tower", 
+    "crystal", "crystals", "mala", "tower", "geode", "cluster",
+    "amethyst", "moonstone", "quartz", "selenite", "tourmaline", 
+    "obsidian", "carnelian", "citrine", "labradorite", "tiger eye", 
+    "tigers eye", "lapis", "jade", "aventurine", "hematite", "malachite", 
+    "fluorite", "jasper", "agate", "aquamarine", "garnet", "sunstone", 
+    "turquoise", "opal", "gemstone", "stone", "raw "
+  ];
 
+  const isCrystalProduct = (item) => {
+    if (item.isCrystal) return true;
+    const catStr = (item.category || '').toLowerCase().trim();
+    const nameStr = (item.name || '').toLowerCase().trim();
+
+    // Check category against known crystal categories
+    if (CRYSTAL_KEYWORDS.some(kw => catStr.includes(kw))) return true;
+
+    // Check item name against crystal keywords (e.g. "Moonstone Tumbles", "Golden Pyrite", "Raw Amethyst Geode")
+    if (CRYSTAL_KEYWORDS.some(kw => nameStr.includes(kw))) return true;
+
+    return false;
+  };
+
+  const isAddressRequired = cartItems.some(isCrystalProduct);
   const isClassPurchase = cartItems.some(item => {
     const nameStr = (item.name || '').toLowerCase();
-    return nameStr.includes('class') || nameStr.includes('workshop') || nameStr.includes('testing');
+    const catStr = (item.category || '').toLowerCase();
+    return (
+      nameStr.includes('class') ||
+      nameStr.includes('workshop') ||
+      nameStr.includes('testing') ||
+      nameStr.includes('tarot card reading') ||
+      catStr.includes('class') ||
+      catStr.includes('tarot card reading')
+    );
   });
 
-  const isPhoneRequired = isPhoneAddressRequired || isClassPurchase;
+  const isPhoneRequired = isAddressRequired || isClassPurchase;
+
+  const handlePhoneChange = (e) => {
+    // Only accept numeric digits, up to 10 characters, no gaps or spaces
+    const cleanDigits = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhone(cleanDigits);
+  };
 
   const [lastOrderDetails, setLastOrderDetails] = useState({ items: [], total: 0 });
 
@@ -60,10 +88,21 @@ export default function Checkout({ cartItems = [], setCartItems }) {
   const handlePay = async (e) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
-    if ((isPhoneRequired && !phone.trim()) || (isPhoneAddressRequired && !address.trim())) {
-      setError(t('checkout.fillDetails'));
+
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    if (isPhoneRequired && !cleanPhone) {
+      setError('Please enter your 10-digit phone number.');
       return;
     }
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setError('Please enter a valid 10-digit phone number.');
+      return;
+    }
+    if (isAddressRequired && !address.trim()) {
+      setError(t('checkout.fillDetails') || 'Please enter your delivery address.');
+      return;
+    }
+
     setIsProcessing(true);
     setError('');
 
@@ -78,7 +117,7 @@ export default function Checkout({ cartItems = [], setCartItems }) {
       key: import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_TKognp49Y6QBem',
       amount: grandTotal * 100, // amount in paisa
       currency: 'INR',
-      name: 'SARAA TAROT SERVICES',
+      name: MERCHANT_NAME,
       description: 'Order Payment',
       handler: async function (response) {
         try {
@@ -88,10 +127,22 @@ export default function Checkout({ cartItems = [], setCartItems }) {
               items: cartItems,
               total: grandTotal,
               paymentMethod: 'RAZORPAY',
-              customerInfo: { name: user.name, email: user.email, phone: phone.trim(), address: address.trim() },
+              customerInfo: { name: user.name, email: user.email, phone: cleanPhone, address: address.trim() },
               razorpayPaymentId: response.razorpay_payment_id
             }
           );
+
+          setCartItems([]);
+
+          // For Tarot Card Reading Classes category products: redirect to class portal
+          if (isClassPurchase) {
+            if (user) {
+              const updatedUser = { ...user, hasPurchasedClass: true };
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+            window.location.href = 'https://tarotclasses.saratarot.in/';
+            return;
+          }
 
           const orderId = res.data?.order?.id || 'N/A';
           const orderItems = cartItems.map(item => `${item.name}${item._selectedSize ? ` (Size: ${item._selectedSize})` : ''} x${item.quantity}`);
@@ -100,11 +151,10 @@ export default function Checkout({ cartItems = [], setCartItems }) {
             id: orderId,
             items: orderItems,
             total: grandTotal,
-            customerInfo: { name: user.name, email: user.email, phone: phone.trim(), address: address.trim() },
+            customerInfo: { name: user.name, email: user.email, phone: cleanPhone, address: address.trim() },
             razorpayPaymentId: response.razorpay_payment_id
           });
 
-          setCartItems([]);
           setIsSuccess(true);
 
           // Auto-trigger WhatsApp redirect
@@ -121,7 +171,7 @@ Hello Saraa Tarot, I have successfully placed an order. Below are the details as
 *Customer Details:*
 • *Name:* ${user.name}
 • *Email:* ${user.email}
-• *Phone:* ${phone.trim()}
+• *Phone:* ${cleanPhone}
 • *Delivery Address:* ${address.trim()}
 
 *Items Ordered:*
@@ -129,7 +179,7 @@ ${orderItemsText}
 
 Please confirm my booking and process it. Thank you!`;
 
-          const waLink = `https://wa.me/919655199507?text=${encodeURIComponent(messageText)}`;
+          const waLink = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(messageText)}`;
           window.open(waLink, '_blank');
         } catch (err) {
           console.error(err);
@@ -141,7 +191,7 @@ Please confirm my booking and process it. Thank you!`;
       prefill: {
         name: user.name,
         email: user.email,
-        contact: phone.trim(),
+        contact: cleanPhone ? `+91${cleanPhone}` : undefined,
       },
       theme: {
         color: '#D4B26A',
@@ -293,22 +343,33 @@ Please confirm my booking and process it. Thank you!`;
                   <label className="block text-[12px] font-semibold uppercase tracking-[0.5px] text-sara-muted mb-2">
                     {t('checkout.phoneNumber')} {isPhoneRequired && <span className="text-red-500">*</span>}
                   </label>
-                  <input
-                    type="tel"
-                    required={isPhoneRequired}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder={t('checkout.phonePlaceholder')}
-                    className="w-full border border-[rgba(42,22,53,0.15)] rounded px-4 py-3 text-[14px] text-[#2A1635] outline-none transition-colors focus:border-sara-gold bg-[#FBF9FF]"
-                  />
+                  <div className="flex items-center w-full border border-[rgba(42,22,53,0.15)] rounded bg-[#FBF9FF] overflow-hidden focus-within:border-sara-gold transition-colors">
+                    <span className="bg-[rgba(214,178,106,0.12)] text-[#2A1635] font-semibold text-[14px] px-3.5 py-3 border-r border-[rgba(42,22,53,0.15)] select-none whitespace-nowrap">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      required={isPhoneRequired}
+                      value={phone}
+                      onChange={handlePhoneChange}
+                      maxLength={10}
+                      placeholder={t('checkout.phonePlaceholder') || 'Enter 10-digit mobile number'}
+                      className="w-full px-4 py-3 text-[14px] text-[#2A1635] outline-none bg-transparent"
+                    />
+                  </div>
+                  {phone && phone.length < 10 && (
+                    <p className="text-[11px] text-amber-600 mt-1 mb-0 font-medium">
+                      Enter 10 digits ({10 - phone.length} more needed)
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-[12px] font-semibold uppercase tracking-[0.5px] text-sara-muted mb-2">
-                    {t('checkout.address')} {isPhoneAddressRequired && <span className="text-red-500">*</span>}
+                    {t('checkout.address')} {isAddressRequired && <span className="text-red-500">*</span>}
                   </label>
                   <textarea
-                    required={isPhoneAddressRequired}
+                    required={isAddressRequired}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder={t('checkout.addressPlaceholder')}

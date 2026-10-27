@@ -99,7 +99,9 @@ export default function ProductCategoryDetail({ cart = [], setCart, setIsCartOpe
           name: finalName,
           price: finalPrice,
           image: item.image || '/saraa-logo.jpeg',
-          quantity: qty
+          quantity: qty,
+          category: item.category || dynamicCat?.name || '',
+          isCrystal: dynamicCat?.type === 'crystal' || (item.category && item.category.toLowerCase() === 'crystal')
         }
       ]);
     }

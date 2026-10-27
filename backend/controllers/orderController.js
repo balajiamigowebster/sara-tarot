@@ -20,7 +20,8 @@ const createOrder = async (req, res) => {
       
       const product = await Product.findByPk(baseProductId);
       if (!product) {
-        return res.status(404).json({ message: `Product not found: ${item.name}` });
+        console.warn(`Product not found in DB for item "${item.name}" (ID: ${baseProductId}). Skipping stock check.`);
+        continue;
       }
       
       if (product.stock !== null && product.stock !== undefined) {
@@ -40,12 +41,19 @@ const createOrder = async (req, res) => {
       await product.save();
     }
 
+    // Clean customerInfo phone number: strictly 10 digits, no +91, no gaps/spaces
+    const cleanPhone = customerInfo?.phone ? String(customerInfo.phone).replace(/\D/g, '').slice(-10) : '';
+    const cleanCustomerInfo = customerInfo ? {
+      ...customerInfo,
+      phone: cleanPhone
+    } : null;
+
     const order = await Order.create({
       userId: req.user.id,
       items,
       total,
       paymentMethod: paymentMethod || 'QR',
-      customerInfo: customerInfo || null,
+      customerInfo: cleanCustomerInfo,
       status: 'CONFIRMED'
     });
 
@@ -54,17 +62,27 @@ const createOrder = async (req, res) => {
     sendOrderConfirmation(order.toJSON()).catch(err => console.error('Failed to send order email:', err));
 
     // Handle Tarot Class Sync Background Task
-    const hasTarotClass = items.some(item => {
+    const isClassItem = (item) => {
       const name = (item.name || '').toLowerCase();
-      return name.includes('class') || name.includes('workshop') || name.includes('testing');
-    });
+      const cat = (item.category || '').toLowerCase();
+      return (
+        name.includes('class') ||
+        name.includes('workshop') ||
+        name.includes('testing') ||
+        name.includes('tarot card reading') ||
+        cat.includes('class') ||
+        cat.includes('tarot card reading')
+      );
+    };
+
+    const hasTarotClass = items.some(isClassItem);
 
     if (hasTarotClass) {
       const syncClassPurchase = async () => {
         try {
           const user = await User.findByPk(req.user.id);
-          const customerName = (customerInfo && customerInfo.name) || (user && user.name) || 'Unknown';
-          const phoneNumber = (customerInfo && customerInfo.phone) || (user && user.phone) || 'Not Provided';
+          const customerName = (cleanCustomerInfo && cleanCustomerInfo.name) || (user && user.name) || 'Unknown';
+          const phoneNumber = cleanPhone || (user && user.phone ? String(user.phone).replace(/\D/g, '').slice(-10) : '') || 'Not Provided';
           
           const classOrder = await ClassPurchaseOrder.create({
             customer_name: customerName,
@@ -115,6 +133,60 @@ const createOrder = async (req, res) => {
   }
 };
 
+const checkClassPurchaseStatus = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    const userEmail = (user && user.email) ? user.email.toLowerCase() : '';
+
+    const isClassItem = (item) => {
+      const name = (item.name || '').toLowerCase();
+      const cat = (item.category || '').toLowerCase();
+      return (
+        name.includes('class') ||
+        name.includes('workshop') ||
+        name.includes('testing') ||
+        name.includes('tarot card reading') ||
+        cat.includes('class') ||
+        cat.includes('tarot card reading')
+      );
+    };
+
+    const orders = await Order.findAll({
+      where: {
+        userId,
+        status: ['CONFIRMED', 'COMPLETED', 'PENDING']
+      }
+    });
+
+    let hasPurchasedClass = orders.some(order => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      return items.some(isClassItem);
+    });
+
+    if (!hasPurchasedClass && userEmail) {
+      const emailOrders = await Order.findAll({
+        where: {
+          status: ['CONFIRMED', 'COMPLETED', 'PENDING']
+        }
+      });
+      hasPurchasedClass = emailOrders.some(order => {
+        const orderEmail = order.customerInfo?.email?.toLowerCase();
+        if (orderEmail === userEmail) {
+          const items = Array.isArray(order.items) ? order.items : [];
+          return items.some(isClassItem);
+        }
+        return false;
+      });
+    }
+
+    return res.json({ hasPurchasedClass });
+  } catch (err) {
+    console.error('Check class purchase error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.findAll({
@@ -142,6 +214,7 @@ const getAllOrders = async (req, res) => {
 
 module.exports = {
   createOrder,
+  checkClassPurchaseStatus,
   getMyOrders,
   getAllOrders
 };

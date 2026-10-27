@@ -51,7 +51,8 @@ export default function TarotClasses({ cart = [], setCart, setIsCartOpen }) {
           name: item.name,
           price: item.price,
           image: item.image || '/saraa-logo.jpeg',
-          quantity: 1
+          quantity: 1,
+          category: item.category || 'Tarot Card Reading'
         }
       ]);
     }

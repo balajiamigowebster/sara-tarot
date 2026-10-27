@@ -31,6 +31,37 @@ export default function Navbar({ cartItems = [], setCartItems, isCartOpen, setIs
   }, []);
 
   const user = useSelector(state => state.auth.user);
+  const [hasPurchasedClass, setHasPurchasedClass] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setHasPurchasedClass(false);
+      return;
+    }
+
+    if (user.hasPurchasedClass) {
+      setHasPurchasedClass(true);
+    }
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      axios.get(`${API_BASE_URL}/api/orders/has-class-purchase`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      .then(res => {
+        if (res.data?.hasPurchasedClass) {
+          setHasPurchasedClass(true);
+        } else {
+          setHasPurchasedClass(false);
+        }
+      })
+      .catch(err => {
+        console.warn('Failed to check class purchase status:', err?.response?.data?.message || err.message);
+      });
+    }
+  }, [user]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -243,12 +274,26 @@ export default function Navbar({ cartItems = [], setCartItems, isCartOpen, setIs
                   >
                     {t('nav.dashboard')}
                   </Link>
+                ) : hasPurchasedClass ? (
+                  <a
+                    href="https://tarotclasses.saratarot.in"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sara-gold no-underline font-sans text-xs font-semibold uppercase tracking-[1px] transition-colors duration-300 hover:text-white flex-shrink-0 flex items-center gap-1.5"
+                  >
+                    <span>{t('nav.myClass') || 'MY CLASS'}</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                  </a>
                 ) : (
                   <Link
                     to="/"
                     className="text-sara-gold no-underline font-sans text-xs font-semibold uppercase tracking-[1px] transition-colors duration-300 hover:text-white flex-shrink-0"
                   >
-                    My Orders
+                    {t('nav.myOrders') || 'My Orders'}
                   </Link>
                 )}
                 <button
@@ -513,13 +558,28 @@ export default function Navbar({ cartItems = [], setCartItems, isCartOpen, setIs
                     >
                       {t('nav.dashboard')}
                     </Link>
+                  ) : hasPurchasedClass ? (
+                    <a
+                      href="https://tarotclasses.saratarot.in"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setIsOpen(false)}
+                      className="block text-center text-sara-gold no-underline py-3 font-sans text-[13px] font-semibold uppercase tracking-[1px] flex items-center justify-center gap-1.5"
+                    >
+                      <span>{t('nav.myClass') || 'MY CLASS'}</span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                    </a>
                   ) : (
                     <Link
                       to="/"
                       onClick={() => setIsOpen(false)}
                       className="block text-center text-sara-gold no-underline py-3 font-sans text-[13px] font-semibold uppercase tracking-[1px]"
                     >
-                      My Orders
+                      {t('nav.myOrders') || 'My Orders'}
                     </Link>
                   )}
                 </li>

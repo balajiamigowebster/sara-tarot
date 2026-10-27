@@ -261,7 +261,9 @@ export default function Products({ cart = [], setCart, setIsCartOpen }) {
           name: cartName,
           price: finalPrice,
           image: getProductImage(product, FALLBACK_IMAGES),
-          quantity: qty
+          quantity: qty,
+          category: product.category || '',
+          isCrystal: !!isCrystal
         }
       ]);
     }

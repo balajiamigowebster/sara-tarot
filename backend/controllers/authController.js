@@ -1,7 +1,54 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Order = require('../models/Order');
 const LoginHistory = require('../models/LoginHistory');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
+
+const checkUserHasClassPurchase = async (userId, userEmail) => {
+  try {
+    const isClassItem = (item) => {
+      const name = (item.name || '').toLowerCase();
+      const cat = (item.category || '').toLowerCase();
+      return (
+        name.includes('class') ||
+        name.includes('workshop') ||
+        name.includes('testing') ||
+        name.includes('tarot card reading') ||
+        cat.includes('class') ||
+        cat.includes('tarot card reading')
+      );
+    };
+
+    const orders = await Order.findAll({
+      where: {
+        userId,
+        status: ['CONFIRMED', 'COMPLETED', 'PENDING']
+      }
+    });
+
+    if (orders.some(order => (Array.isArray(order.items) ? order.items : []).some(isClassItem))) {
+      return true;
+    }
+
+    if (userEmail) {
+      const allActiveOrders = await Order.findAll({
+        where: { status: ['CONFIRMED', 'COMPLETED', 'PENDING'] }
+      });
+      return allActiveOrders.some(order => {
+        const orderEmail = order.customerInfo?.email?.toLowerCase();
+        if (orderEmail === userEmail.toLowerCase()) {
+          return (Array.isArray(order.items) ? order.items : []).some(isClassItem);
+        }
+        return false;
+      });
+    }
+
+    return false;
+  } catch (err) {
+    console.error('Error checking user class purchase in auth:', err);
+    return false;
+  }
+};
 
 const signToken = (user) => {
   return jwt.sign(
@@ -100,6 +147,7 @@ const customerLogin = async (req, res) => {
     await recordLogin(user.id, 'email', req);
 
     const token = signToken(user);
+    const hasPurchasedClass = await checkUserHasClassPurchase(user.id, user.email);
 
     return res.json({
       token,
@@ -107,7 +155,8 @@ const customerLogin = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        hasPurchasedClass
       }
     });
   } catch (err) {
@@ -215,6 +264,7 @@ const googleLogin = async (req, res) => {  const { credential, accessToken } = r
     await recordLogin(user.id, 'google', req);
 
     const token = signToken(user);
+    const hasPurchasedClass = await checkUserHasClassPurchase(user.id, user.email);
 
     return res.json({
       token,
@@ -222,7 +272,8 @@ const googleLogin = async (req, res) => {  const { credential, accessToken } = r
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        hasPurchasedClass
       }
     });
   } catch (err) {
@@ -237,12 +288,15 @@ const getMe = async (req, res) => {
     if (!user) {
       return res.status(401).json({ code: 'TOKEN_INVALID', message: 'User not found. Please log in again.' });
     }
+    const hasPurchasedClass = await checkUserHasClassPurchase(user.id, user.email);
+
     return res.json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        hasPurchasedClass
       }
     });
   } catch (err) {
