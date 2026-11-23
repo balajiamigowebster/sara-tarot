@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config';
@@ -29,7 +29,7 @@ export default function Crystals({ cart = [], setCart, setIsCartOpen }) {
   const { locale, t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const subcategoryParam = searchParams.get('subcategory');
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const selectedCategory = subcategoryParam || null;
   const [activeItemId, setActiveItemId] = useState(null);
   const [items, setItems] = useState([]);
   const translatedItems = useTranslatedList(items, locale);
@@ -37,16 +37,13 @@ export default function Crystals({ cart = [], setCart, setIsCartOpen }) {
   const [cardHealing, setCardHealing] = useState({});
   const [crystalCategories, setCrystalCategories] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState({});
+  const [prevSubcategory, setPrevSubcategory] = useState(subcategoryParam);
   const [visibleCount, setVisibleCount] = useState(9);
 
-  useEffect(() => {
-    if (subcategoryParam) {
-      setSelectedCategory(subcategoryParam);
-    } else {
-      setSelectedCategory(null);
-    }
+  if (prevSubcategory !== subcategoryParam) {
+    setPrevSubcategory(subcategoryParam);
     setVisibleCount(9);
-  }, [subcategoryParam]);
+  }
 
   useEffect(() => {
     const fetchCrystals = async () => {
@@ -88,6 +85,7 @@ export default function Crystals({ cart = [], setCart, setIsCartOpen }) {
       }
     };
     fetchCrystals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddToCart = (item) => {
@@ -523,7 +521,7 @@ export default function Crystals({ cart = [], setCart, setIsCartOpen }) {
                 </div>
 
                 <button 
-                  onClick={(e) => {
+                  onClick={() => {
                     handleAddToCart(currentItem);
                     handleClosePopup();
                   }}

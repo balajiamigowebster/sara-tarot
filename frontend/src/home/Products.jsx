@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -18,9 +18,9 @@ const fadeInUpVariants = {
 };
 
 const CATEGORY_SECTIONS = [
+  { title: 'Tarot Private Consultation', viewAllPath: '/products/tarot-consultation', categoryName: 'Tarot Private Consultation' },
   { title: 'Saraa Healing Crystals', viewAllPath: '/products/crystals', filterType: 'crystal' },
   { title: 'Tarot Card Reading', viewAllPath: '/products/tarot-classes', categoryName: 'Tarot Card Reading' },
-  { title: 'Tarot Private Consultation', viewAllPath: '/products/tarot-consultation', categoryName: 'Tarot Private Consultation' },
   { title: 'Murugar Card Deck', viewAllPath: '/products/murugar-cards', categoryName: 'Murugar Cards' },
   { title: 'Spiritual Healing', viewAllPath: '/products/spiritual-healing', categoryName: 'Spiritual Healing' },
   { title: 'Kali Pooja', viewAllPath: '/products/kali-pooja', categoryName: 'Kali Pooja' },
@@ -150,6 +150,7 @@ export default function Products({ cart = [], setCart, setIsCartOpen }) {
         const products = Array.isArray(prodRes.data) ? prodRes.data : [];
         const categoriesData = Array.isArray(catRes.data) ? catRes.data : [];
         setAllProducts(products);
+        setTranslatedProducts(products);
         setCategories(categoriesData); // STORE IN STATE
         const crystalNames = categoriesData
           .filter(c => c.type === 'crystal')
@@ -158,6 +159,7 @@ export default function Products({ cart = [], setCart, setIsCartOpen }) {
       } catch (err) {
         console.error('Failed to fetch products for homepage:', err);
         setAllProducts([]);
+        setTranslatedProducts([]);
         setCrystalCategoryNames([]);
       } finally {
         setLoading(false);
@@ -168,10 +170,15 @@ export default function Products({ cart = [], setCart, setIsCartOpen }) {
 
   useEffect(() => {
     if (allProducts.length === 0) return;
-    setTranslatedProducts(allProducts); // Immediately show original text
 
     let active = true;
     const translateAll = async () => {
+      if (locale === 'en') {
+        if (active) {
+          setTranslatedProducts(allProducts);
+        }
+        return;
+      }
       const translated = await Promise.all(
         allProducts.map(p => translateProduct(p, locale))
       );
@@ -186,7 +193,7 @@ export default function Products({ cart = [], setCart, setIsCartOpen }) {
   }, [allProducts, locale]);
 
   const getProductsForSection = (section) => {
-    let prods = [];
+    let prods;
     if (section.filterType === 'crystal') {
       const allCrystals = translatedProducts.filter(p =>
         p.category && crystalCategoryNames.includes(p.category.toLowerCase())
@@ -314,7 +321,7 @@ export default function Products({ cart = [], setCart, setIsCartOpen }) {
           // Try to sort them based on the categories fetched from backend
           // We removed this sorting logic to respect the frontend-defined order.
 
-          return sortedSections.map((section, sIdx) => {
+          return sortedSections.map((section) => {
             const sectionProducts = getProductsForSection(section);
             if (sectionProducts.length === 0) return null;
 

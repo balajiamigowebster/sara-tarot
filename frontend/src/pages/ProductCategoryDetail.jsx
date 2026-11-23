@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -24,7 +24,6 @@ import KaliPooja from '../components/categories/KaliPooja';
 export default function ProductCategoryDetail({ cart = [], setCart, setIsCartOpen }) {
   const { locale, t } = useLanguage();
   const { category } = useParams();
-  const [categories, setCategories] = useState([]);
   const [dynamicCat, setDynamicCat] = useState(null);
   const [products, setProducts] = useState([]);
   const translatedProducts = useTranslatedList(products, locale);
@@ -38,7 +37,6 @@ export default function ProductCategoryDetail({ cart = [], setCart, setIsCartOpe
       try {
         const catRes = await axios.get(`${API_BASE_URL}/api/categories`);
         const catData = Array.isArray(catRes.data) ? catRes.data : [];
-        setCategories(catData);
 
         const matched = catData.find(c => c.slug === category);
         if (matched) {
